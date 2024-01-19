@@ -1,0 +1,95 @@
+---
+# Source: a1estherb-espresso-shop-web/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: espresso-shop-web-sa
+  labels:
+    helm.sh/chart: a1estherb-espresso-shop-web-0.1.0
+    app.kubernetes.io/name: a1estherb-espresso-shop-web
+    app.kubernetes.io/instance: a1estherb-espresso-shop-web
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: a1estherb-espresso-shop-web/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: espresso-shop-web-svc
+  labels:
+    helm.sh/chart: a1estherb-espresso-shop-web-0.1.0
+    app.kubernetes.io/name: a1estherb-espresso-shop-web
+    app.kubernetes.io/instance: a1estherb-espresso-shop-web
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    version: v1
+---
+# Source: a1estherb-espresso-shop-web/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: espresso-shop-web
+  labels:
+spec:
+  selector:
+    matchLabels:
+     version: v1
+  template:
+    metadata:
+      labels:
+        version: v1
+    spec:
+      serviceAccountName: espresso-shop-web-sa
+      securityContext:
+        {}
+      containers:
+        - name: web
+          securityContext:
+            {}
+          image: "devopseasylearning/a1estherb-espresso-shop-web:v1.0.0"
+          imagePullPolicy: Always
+          env:
+          - name: ProductCatalogUrl
+            value: http://espresso-shop-product-catalog-svc:8091
+          - name: ReviewsUrl
+            value: http://espresso-shop-reviews-svc:8092
+        
+          ports:
+            - name: http
+              containerPort: 
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+# Source: a1estherb-espresso-shop-web/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: espresso-shop-web-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: espresso-shop-web
+  minReplicas: 1
+  maxReplicas: 100
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
