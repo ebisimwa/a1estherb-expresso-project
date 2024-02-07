@@ -1,0 +1,89 @@
+version: '3c'
+
+services:
+  db:
+    image: devopseasylearning/tarzan-db:v0.0.1
+    container_name: db
+    environment:
+      - MYSQL_ROOT_PASSWORD=my-secret-pw
+    ports:
+      - 3306:3306
+    networks:
+      - weather_net
+    volumes:
+      - data1:/var/lib/mysql
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - 6379:6379
+    environment:
+      - REDIS_PASSWORD=redis
+    command: redis-server --requirepass redis
+    networks:
+      - weather_net
+    volumes:
+      - data2:/data
+
+  weather:
+    image: devopseasylearning/tarzan-weather:v0.0.1
+    container_name: weather
+    ports:
+      - 5000:5000
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=redis
+      - REDIS_USER=redis
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=my-secret-pw
+      - APIKEY=ecbc396f46mshb65cbb1f82cf334p1fcc87jsna5e962a3c542
+    depends_on:
+      - ui
+      - redis
+    networks:
+      - weather_net
+    restart: always
+
+  auth:
+    image: devopseasylearning/tarzan-auth:v0.0.1
+    container_name: auth
+    ports:
+      - 8080:8080
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=my-secret-pw
+    depends_on:
+      - db
+    networks: 
+      - weather_net
+    restart: always
+
+  ui:
+    image: devopseasylearning/tarzan-ui:v0.0.1
+    container_name: ui
+    environment:
+      - AUTH_HOST=auth
+      - AUTH_PORT=8080
+      - WEATHER_HOST=weather
+      - WEATHER_PORT=5000
+      - REDIS_USER=redis
+      - REDIS_PASSWORD=redis
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth
+    networks:
+      - weather_net
+
+volumes:
+  data1:
+  data2:
+
+networks:
+  weather_net: 
